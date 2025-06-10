@@ -4,4 +4,4 @@ folium
 koreanize_matplotlib
 streamlit-folium
 streamlit
-pandas
+scipy

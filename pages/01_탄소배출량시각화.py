@@ -9,7 +9,7 @@ st.markdown("Our World in Data의 CO2 배출량 데이터를 기반으로 합니
 
 # --- 데이터 로드 ---
 # CSV 파일 경로 (다운로드한 파일 이름과 동일하게 설정)
-DATA_PATH = 'co2-emissions-total.csv' # 이 파일 이름을 다운로드한 실제 파일 이름으로 변경하세요!
+DATA_PATH = 'owid-co2-data.csv' # 이 파일 이름을 다운로드한 실제 파일 이름으로 변경하세요!
 
 @st.cache_data # 데이터 로드를 캐싱하여 앱 성능 향상
 def load_data(path):

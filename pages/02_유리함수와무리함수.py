@@ -126,3 +126,44 @@ else: # function_type == "무리함수 (Irrational Function)"
     fig.add_trace(go.Scatter(
         x=x_range,
         y=y_range,
+        mode='lines',
+        name=f'y = {sqrt_sign}√({a:.1f}x + {b:.1f}) + {c:.1f}',
+        line=dict(color='purple', width=2)
+    ))
+
+    # 시작점 표시
+    fig.add_trace(go.Scatter(
+        x=[start_x],
+        y=[start_y],
+        mode='markers',
+        name=f'시작점 ({start_x:.2f}, {start_y:.2f})',
+        marker=dict(color='darkorange', size=10, symbol='circle')
+    ))
+
+    # 레이아웃 설정
+    fig.update_layout(
+        title=f'무리함수: y = {sqrt_sign}√({a:.1f}x + {b:.1f}) + {c:.1f}',
+        xaxis_title="x",
+        yaxis_title="y",
+        hovermode="x unified",
+        height=600,
+        showlegend=True,
+        xaxis_range=[min(x_range)-1, max(x_range)+1], # x축 범위 자동 조절
+        yaxis_range=[start_y-5 if sqrt_sign=="+" else start_y-1, start_y+5 if sqrt_sign=="-" else start_y+1] # y축 범위 자동 조절
+    )
+
+    # 정의역/치역 정보
+    st.subheader("함수 정보")
+    st.write(f"**시작점:** `({start_x:.2f}, {start_y:.2f})`")
+    
+    domain_sign = ">=" if a > 0 else "<="
+    st.write(f"**정의역:** $x {domain_sign} {start_x:.2f}$ 인 모든 실수")
+    
+    range_sign = ">=" if sqrt_sign == "+" else "<="
+    st.write(f"**치역:** $y {range_sign} {start_y:.2f}$ 인 모든 실수")
+
+
+st.plotly_chart(fig, use_container_width=True)
+
+st.markdown("---")
+st.markdown("© 2025 함수 그래프 탐색기 앱. Made for Math Class.")

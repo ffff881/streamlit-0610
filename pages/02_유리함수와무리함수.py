@@ -17,11 +17,11 @@ if function_type == "유리함수 (Rational Function)":
     st.header("유리함수 $y = \\frac{k}{x-p} + q$")
     st.markdown("`k`, `p`, `q` 값을 변경하여 그래프와 점근선을 확인해보세요.")
 
-    # 사용자 입력
+    # 사용자 입력: st.slider 대신 st.number_input 사용
     st.sidebar.subheader("유리함수 계수")
-    k = st.sidebar.slider("k 값", -10.0, 10.0, 1.0, 0.1)
-    p = st.sidebar.slider("p 값 (수직 점근선)", -5.0, 5.0, 0.0, 0.1)
-    q = st.sidebar.slider("q 값 (수평 점근선)", -5.0, 5.0, 0.0, 0.1)
+    k = st.sidebar.number_input("k 값", value=1.0, step=0.1, format="%.1f")
+    p = st.sidebar.number_input("p 값 (수직 점근선)", value=0.0, step=0.1, format="%.1f")
+    q = st.sidebar.number_input("q 값 (수평 점근선)", value=0.0, step=0.1, format="%.1f")
 
     # 그래프 데이터 생성
     x = np.linspace(-10, 10, 400)
@@ -46,7 +46,7 @@ if function_type == "유리함수 (Rational Function)":
     # 수직 점근선
     fig.add_trace(go.Scatter(
         x=[p, p],
-        y=[min(graph_y) if len(graph_y) > 0 else -10, max(graph_y) if len(graph_y) > 0 else 10], # y축 범위에 맞춤
+        y=[min(graph_y) if len(graph_y) > 0 and not np.isnan(min(graph_y)) else -10, max(graph_y) if len(graph_y) > 0 and not np.isnan(max(graph_y)) else 10], # y축 범위에 맞춤
         mode='lines',
         name=f'수직 점근선 x = {p:.1f}',
         line=dict(color='red', width=1, dash='dash')
@@ -81,7 +81,7 @@ if function_type == "유리함수 (Rational Function)":
     st.write(f"**치역:** $y \\neq {q:.1f}$ 인 모든 실수")
 
 
-# --- 무리함수 모드 ---
+# --- 무리함수 모드 (이전과 동일) ---
 else: # function_type == "무리함수 (Irrational Function)"
     st.header("무리함수 $y = \\pm \\sqrt{ax+b} + c$")
     st.markdown("`a`, `b`, `c` 값과 부호를 변경하여 그래프와 시작점을 확인해보세요.")
@@ -89,9 +89,9 @@ else: # function_type == "무리함수 (Irrational Function)"
     # 사용자 입력
     st.sidebar.subheader("무리함수 계수")
     sqrt_sign = st.sidebar.radio("루트 앞 부호", ("+", "-"))
-    a = st.sidebar.slider("a 값", -5.0, 5.0, 1.0, 0.1)
-    b = st.sidebar.slider("b 값", -5.0, 5.0, 0.0, 0.1)
-    c = st.sidebar.slider("c 값", -5.0, 5.0, 0.0, 0.1)
+    a = st.sidebar.number_input("a 값", value=1.0, step=0.1, format="%.1f")
+    b = st.sidebar.number_input("b 값", value=0.0, step=0.1, format="%.1f")
+    c = st.sidebar.number_input("c 값", value=0.0, step=0.1, format="%.1f")
 
     # 시작점 계산
     # ax + b >= 0 이므로 x >= -b/a (a>0) 또는 x <= -b/a (a<0)
@@ -126,44 +126,3 @@ else: # function_type == "무리함수 (Irrational Function)"
     fig.add_trace(go.Scatter(
         x=x_range,
         y=y_range,
-        mode='lines',
-        name=f'y = {sqrt_sign}√({a:.1f}x + {b:.1f}) + {c:.1f}',
-        line=dict(color='purple', width=2)
-    ))
-
-    # 시작점 표시
-    fig.add_trace(go.Scatter(
-        x=[start_x],
-        y=[start_y],
-        mode='markers',
-        name=f'시작점 ({start_x:.2f}, {start_y:.2f})',
-        marker=dict(color='darkorange', size=10, symbol='circle')
-    ))
-
-    # 레이아웃 설정
-    fig.update_layout(
-        title=f'무리함수: y = {sqrt_sign}√({a:.1f}x + {b:.1f}) + {c:.1f}',
-        xaxis_title="x",
-        yaxis_title="y",
-        hovermode="x unified",
-        height=600,
-        showlegend=True,
-        xaxis_range=[min(x_range)-1, max(x_range)+1], # x축 범위 자동 조절
-        yaxis_range=[start_y-5 if sqrt_sign=="+" else start_y-1, start_y+5 if sqrt_sign=="-" else start_y+1] # y축 범위 자동 조절
-    )
-
-    # 정의역/치역 정보
-    st.subheader("함수 정보")
-    st.write(f"**시작점:** `({start_x:.2f}, {start_y:.2f})`")
-    
-    domain_sign = ">=" if a > 0 else "<="
-    st.write(f"**정의역:** $x {domain_sign} {start_x:.2f}$ 인 모든 실수")
-    
-    range_sign = ">=" if sqrt_sign == "+" else "<="
-    st.write(f"**치역:** $y {range_sign} {start_y:.2f}$ 인 모든 실수")
-
-
-st.plotly_chart(fig, use_container_width=True)
-
-st.markdown("---")
-st.markdown("© 2025 함수 그래프 탐색기 앱. Made for Math Class.")

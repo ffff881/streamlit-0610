@@ -1,0 +1,5 @@
+yfinance
+plotly
+folium
+koreanize_matplotlib
+streamlit-folium

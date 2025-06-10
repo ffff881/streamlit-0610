@@ -12,7 +12,7 @@ function_type = st.sidebar.radio(
     ("유리함수 (Rational Function)", "무리함수 (Irrational Function)")
 )
 
-# --- 유리함수 모드 (이전과 동일) ---
+# --- 유리함수 모드 ---
 if function_type == "유리함수 (Rational Function)":
     st.header("유리함수 $y = \\frac{k}{x-p} + q$")
     st.markdown("`k`, `p`, `q` 값을 변경하여 그래프와 점근선을 확인해보세요.")
@@ -71,7 +71,7 @@ if function_type == "유리함수 (Rational Function)":
         line=dict(color='green', width=1, dash='dash')
     ))
 
-    # 레이아웃 설정
+    # 레이아웃 설정 (dtick=1 추가)
     fig.update_layout(
         title=f'유리함수: y = {k:.1f}/(x - {p:.1f}) + {q:.1f}',
         xaxis_title="x",
@@ -79,8 +79,20 @@ if function_type == "유리함수 (Rational Function)":
         hovermode="x unified",
         height=600,
         showlegend=True,
-        xaxis_range=[-10, 10],
-        yaxis_range=[-10, 10]
+        xaxis=dict(
+            range=[-10, 10], # x축 범위 고정
+            showgrid=True,
+            zeroline=True,
+            zerolinecolor='black',
+            dtick=1 # 정수 단위 그리드 라인 추가
+        ),
+        yaxis=dict(
+            range=[-10, 10],  # y축 범위 고정
+            showgrid=True,
+            zeroline=True,
+            zerolinecolor='black',
+            dtick=1 # 정수 단위 그리드 라인 추가
+        )
     )
     
     st.plotly_chart(fig, use_container_width=True)
@@ -133,7 +145,7 @@ if function_type == "유리함수 (Rational Function)":
     st.markdown("---")
 
 
-# --- 무리함수 모드 (새로운 학습 기능 추가) ---
+# --- 무리함수 모드 ---
 else: # function_type == "무리함수 (Irrational Function)"
     st.header("무리함수 $y = \\pm \\sqrt{ax+b} + c$")
     st.markdown("`a`, `b`, `c` 값과 부호를 변경하여 그래프와 시작점을 확인해보세요.")
@@ -159,9 +171,9 @@ else: # function_type == "무리함수 (Irrational Function)"
 
     # 그래프 데이터 생성
     if a > 0:
-        x_range = np.linspace(start_x, start_x + 10, 400) # 시작점부터 오른쪽으로
+        x_range = np.linspace(start_x, start_x + 10, 400)
     else: # a < 0
-        x_range = np.linspace(start_x - 10, start_x, 400) # 시작점부터 왼쪽으로
+        x_range = np.linspace(start_x - 10, start_x, 400)
 
     inner_sqrt = a * x_range + b
     y_range = np.where(inner_sqrt >= 0, np.sqrt(inner_sqrt), np.nan)
@@ -192,7 +204,7 @@ else: # function_type == "무리함수 (Irrational Function)"
         marker=dict(color='darkorange', size=10, symbol='circle')
     ))
 
-    # 레이아웃 설정
+    # 레이아웃 설정 (dtick=1 추가)
     fig.update_layout(
         title=f'무리함수: y = {sqrt_sign}√({a:.1f}x + {b:.1f}) + {c:.1f}',
         xaxis_title="x",
@@ -200,8 +212,20 @@ else: # function_type == "무리함수 (Irrational Function)"
         hovermode="x unified",
         height=600,
         showlegend=True,
-        xaxis_range=[min(x_range)-1, max(x_range)+1],
-        yaxis_range=[min(y_range) if not np.isnan(min(y_range)) else -10, max(y_range) if not np.isnan(max(y_range)) else 10]
+        xaxis=dict(
+            range=[min(x_range)-1, max(x_range)+1],
+            showgrid=True,
+            zeroline=True,
+            zerolinecolor='black',
+            dtick=1 # 정수 단위 그리드 라인 추가
+        ),
+        yaxis=dict(
+            range=[min(y_range) if not np.isnan(min(y_range)) else -10, max(y_range) if not np.isnan(max(y_range)) else 10],
+            showgrid=True,
+            zeroline=True,
+            zerolinecolor='black',
+            dtick=1 # 정수 단위 그리드 라인 추가
+        )
     )
 
     st.plotly_chart(fig, use_container_width=True)
@@ -243,17 +267,16 @@ else: # function_type == "무리함수 (Irrational Function)"
 
         # 방향 확인
         correct_directions = []
-        if a > 0: # a가 양수면 x가 증가하는 방향 (오른쪽)
+        if a > 0:
             correct_directions.append('오른쪽 (x 증가)')
-        else: # a가 음수면 x가 감소하는 방향 (왼쪽)
+        else:
             correct_directions.append('왼쪽 (x 감소)')
         
-        if sqrt_sign == "+": # 루트 앞이 +면 y가 증가하는 방향 (위)
+        if sqrt_sign == "+":
             correct_directions.append('위 (y 증가)')
-        else: # 루트 앞이 -면 y가 감소하는 방향 (아래)
+        else:
             correct_directions.append('아래 (y 감소)')
 
-        # 사용자가 선택한 방향과 정답 방향을 set으로 변환하여 비교 (순서 무관하게 요소 비교)
         user_directions_set = set(user_directions)
         correct_directions_set = set(correct_directions)
 

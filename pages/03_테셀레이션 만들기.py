@@ -15,89 +15,87 @@ st.title("✂️ 나만의 테셀레이션 만들기")
 st.write("캔버스에서 도형을 직접 변형하고, 테셀레이션을 만들어 보세요!")
 
 # --- 캔버스 설정 ---
+# 캔버스 크기를 좀 더 명확히 설정 (픽셀 단위)
 canvas_width = 700
 canvas_height = 500
 
 # --- 기본 도형의 꼭짓점 정의 함수 (캔버스 중앙에 오도록 조정) ---
+# 이 함수는 이제 항상 list of lists를 반환합니다.
 def get_initial_drawable_polygon_vertices(shape_type, size, canvas_width, canvas_height):
     vertices = []
     # 도형의 중심을 (0,0)으로 일단 설정
     if shape_type == "정사각형":
-        vertices = np.array([
+        vertices = [
             [-size / 2, -size / 2],
             [size / 2, -size / 2],
             [size / 2, size / 2],
             [-size / 2, size / 2]
-        ])
+        ]
     elif shape_type == "정삼각형":
         height = size * math.sqrt(3) / 2
-        vertices = np.array([
+        vertices = [
             [-size / 2, -height / 2],
             [size / 2, -height / 2],
             [0, height / 2]
-        ])
+        ]
     elif shape_type == "정육각형":
         angle_rad = np.radians(np.arange(0, 360, 60))
-        vertices = np.array([
+        vertices_np = np.array([
             [size * np.cos(a), size * np.sin(a)]
             for a in angle_rad
         ])
+        vertices = vertices_np.tolist() # numpy array를 list로 변환
     
     # 캔버스 중앙으로 이동
     center_x, center_y = canvas_width / 2, canvas_height / 2
-    vertices_shifted = vertices + [center_x, center_y]
+    vertices_shifted = [[v[0] + center_x, v[1] + center_y] for v in vertices]
     
-    return vertices_shifted.tolist() # st_canvas는 list of list를 선호
+    return vertices_shifted
 
 # --- 사이드바 설정 ---
 st.sidebar.header("1. 기본 도형 선택")
 shape_type = st.sidebar.selectbox("기본 정다각형 선택:", ["정사각형", "정삼각형", "정육각형"])
 tile_size = st.sidebar.slider("캔버스 타일 기준 크기:", min_value=50, max_value=200, value=100, step=10)
 
-# --- 캔버스에 초기 도형 그리기 위한 세션 상태 관리 ---
-# 'initial_drawing_data_for_canvas' 키를 사용하여 캔버스에 전달될 최종 데이터를 저장
-# 이 데이터는 Streamlit이 리로드될 때마다 재사용될 수 있도록 합니다.
+# --- 캔버스에 초기 도형 그리기 위한 세션 상태 관리 (단순화) ---
+# 매번 새로운 initial_drawing 데이터를 생성하여 명확성을 높입니다.
+initial_vertices = get_initial_drawable_polygon_vertices(shape_type, tile_size, canvas_width, canvas_height)
 
-# 도형 타입이나 크기가 변경되었는지 확인하는 플래그
-should_reinitialize_canvas = False
-if 'last_shape_type' not in st.session_state or \
-   st.session_state.last_shape_type != shape_type or \
-   'last_tile_size' not in st.session_state or \
-   st.session_state.last_tile_size != tile_size:
-    
-    should_reinitialize_canvas = True
-    st.session_state.last_shape_type = shape_type
-    st.session_state.last_tile_size = tile_size
-    
-    initial_vertices = get_initial_drawable_polygon_vertices(shape_type, tile_size, canvas_width, canvas_height)
-    
-    # `streamlit-drawable-canvas`는 `initial_drawing`에 {"objects": [...]} 형태를 기대함.
-    st.session_state.initial_drawing_data_for_canvas = {
-        "objects": [{
-            "type": "polygon",
-            "strokeWidth": 2,
-            "stroke": "black",
-            "fill": "rgba(255, 99, 71, 0.5)", # 기본 도형 채우기 색상 (투명도 포함)
-            "points": initial_vertices
-        }]
-    }
-# else: 도형 타입이나 크기 변경이 없으면 기존 `st.session_state.initial_drawing_data_for_canvas` 유지
+# `streamlit-drawable-canvas`는 `initial_drawing`에 {"objects": [...]} 형태를 기대함.
+# 여기에 도형 객체 리스트를 직접 구성하여 전달합니다.
+initial_canvas_drawing_data = {
+    "objects": [{
+        "type": "polygon",
+        "strokeWidth": 2,
+        "stroke": "black",
+        "fill": "rgba(255, 99, 71, 0.5)", # 기본 도형 채우기 색상 (투명도 포함)
+        "points": initial_vertices
+    }]
+}
 
 st.subheader("2. 캔버스에서 도형 변형하기 (클릭 & 드래그)")
 st.info("캔버스에 도형이 나타납니다. 도형을 클릭한 뒤 점을 드래그하여 변형하거나, 도형 전체를 이동/회전할 수 있습니다.")
 
 # 캔버스 컴포넌트
 canvas_result = st_canvas(
-    fill_color="rgba(255, 165, 0, 0.3)",  # 채우기 색상 (캔버스 배경과 구분)
+    fill_color="rgba(255, 165, 0, 0.3)",  # 캔버스에서 사용자가 그릴 때의 기본 채우기 색상
     stroke_width=2,
     stroke_color="black",
     background_color="#eee", # 캔버스 배경색
     height=canvas_height,
     width=canvas_width,
     drawing_mode="transform", # 'transform' 모드가 객체 변형, 이동, 회전에 적합
-    initial_drawing=st.session_state.initial_drawing_data_for_canvas, # 이 부분이 중요!
-    key="canvas_tessellation" + shape_type + str(tile_size) # key를 동적으로 변경하여 캔버스 강제 재렌더링
+    initial_drawing=initial_canvas_drawing_data, # 수정된 초기 도형 데이터 전달
+    key=f"canvas_tessellation_{shape_type}_{tile_size}_{st.session_state.get('rerun_counter', 0)}"
+    # key에 `rerun_counter`를 추가하여 도형 선택 및 크기 변경 시 강제 리렌더링 유도
 )
+
+# `rerun_counter`를 증가시켜 캔버스 `key`가 변경되도록 합니다.
+# 이렇게 하면 매번 앱이 실행될 때마다 캔버스가 '새롭게' 그려지면서 초기 도형을 불러오려 시도합니다.
+if 'rerun_counter' not in st.session_state:
+    st.session_state.rerun_counter = 0
+st.session_state.rerun_counter += 1
+
 
 # --- 변형된 도형 확정 ---
 modified_vertices_from_canvas = None
@@ -144,8 +142,6 @@ if final_base_vertices is None or len(final_base_vertices) == 0:
     st.warning("캔버스에서 변형된 도형을 가져오지 못했습니다. 기본 정사각형으로 테셀레이션을 시도합니다.")
     # 캔버스 크기를 고려하여 기본 도형 생성 (Matplotlib용)
     temp_vertices = get_initial_drawable_polygon_vertices("정사각형", tile_size, canvas_width, canvas_height)
-    # 캔버스의 (0,0)은 좌상단, Matplotlib은 좌하단이 일반적이므로 Y축을 뒤집거나 오프셋을 조절해야 함
-    # 여기서는 단순화를 위해 캔버스 좌표를 그대로 사용
     final_base_vertices = np.array(temp_vertices)
 
 
@@ -179,86 +175,60 @@ if final_base_vertices is not None and len(final_base_vertices) > 0:
         if vertices is None or len(vertices) == 0:
             return None
 
-        # 변형된 도형의 경계 상자 계산 (Matplotlib에 그릴 때 사용할 기준)
         min_x, min_y = np.min(vertices[:, 0]), np.min(vertices[:, 1])
         max_x, max_y = np.max(vertices[:, 0]), np.max(vertices[:, 1])
-        # shape_width = max_x - min_x # 실제 변형된 도형의 너비
-        # shape_height = max_y - min_y # 실제 변형된 도형의 높이
         
-        # 도형의 중심 (회전/대칭 기준)
         shape_center_x = (min_x + max_x) / 2
         shape_center_y = (min_y + max_y) / 2
 
-        # 그리드 간격: 캔버스에서 도형이 변형되었더라도,
-        # 테셀레이션은 '원래 어떤 도형을 기반으로 했는지'에 따라 격자 간격이 결정됩니다.
-        # 따라서 `ref_tile_size` (슬라이더로 조절하는 기준 크기)와 `shape_type`을 활용합니다.
-        
         x_step_grid = ref_tile_size
         y_step_grid = ref_tile_size
         
         if shape_type == "정삼각형":
-            x_step_grid = ref_tile_size / 2 # 한 칸 너비 (가로로 겹침)
-            y_step_grid = ref_tile_size * math.sqrt(3) / 2 # 높이
+            x_step_grid = ref_tile_size / 2
+            y_step_grid = ref_tile_size * math.sqrt(3) / 2
         elif shape_type == "정육각형":
-            x_step_grid = ref_tile_size * 1.5 # 육각형 가로 간격 (센터 투 센터)
-            y_step_grid = ref_tile_size * math.sqrt(3) # 육각형 세로 간격 (두 행에 걸쳐)
+            x_step_grid = ref_tile_size * 1.5
+            y_step_grid = ref_tile_size * math.sqrt(3)
 
-
-        # Matplotlib Figure 및 Axes 설정
         fig, ax = plt.subplots(figsize=(cols * x_step_grid / 70, rows * y_step_grid / 70))
         ax.set_aspect('equal', adjustable='box')
         ax.axis('off')
 
         for r in range(rows):
             for c in range(cols):
-                # 1. 초기 위치 오프셋 계산 (그리드 배치)
                 offset_x_grid = c * x_step_grid
                 offset_y_grid = r * y_step_grid
 
-                # 정육각형 및 정삼각형 그리드 특수 오프셋
                 if shape_type == "정육각형" and r % 2 != 0:
-                    offset_x_grid += x_step_grid / 2 # 홀수 행은 반 칸 이동하여 벌집 모양 형성
+                    offset_x_grid += x_step_grid / 2
                 elif shape_type == "정삼각형":
-                    # 정삼각형은 복잡하여 추후 정교한 구현 필요 (현재는 단순 사각형 격자처럼)
                     pass
                 
-                # 2. 도형 꼭짓점 복사 (캔버스에서 넘어온 변형된 꼭짓점)
                 current_tile_vertices_base = np.copy(vertices)
                 
-                # 3. 도형의 로컬 중심 (변환의 기준점)
-                # 캔버스에서 온 vertices는 캔버스 기준의 절대 좌표이므로,
-                # 회전/대칭을 적용하려면 도형의 '현재' 중심을 기준으로 해야 합니다.
                 current_shape_center_x = np.mean(current_tile_vertices_base[:, 0])
                 current_shape_center_y = np.mean(current_tile_vertices_base[:, 1])
 
-                # 도형의 중심을 원점으로 임시 이동 (변환 적용을 위해)
                 temp_vertices = current_tile_vertices_base - [current_shape_center_x, current_shape_center_y]
 
-                # 4. 선택된 변환 방식 적용
                 if transform_type == "회전":
                     theta = np.radians(rotation_angle)
                     rotation_matrix = np.array([
                         [np.cos(theta), -np.sin(theta)],
                         [np.sin(theta), np.cos(theta)]
                     ])
-                    temp_vertices = np.dot(temp_vertices, rotation_matrix.T) # 회전 적용
+                    temp_vertices = np.dot(temp_vertices, rotation_matrix.T)
                     
                 elif transform_type == "대칭":
-                    # Y축 기준 대칭 (좌우 반전)
-                    # X좌표만 -1을 곱하여 반전시킵니다.
                     temp_vertices = temp_vertices * np.array([-1, 1])
                     
-                # 5. 최종 위치로 이동 (변환된 도형 + 그리드 오프셋)
-                # 원점 이동했던 것을 다시 되돌리고, 그리드 오프셋을 더합니다.
                 final_vertices = temp_vertices + [current_shape_center_x, current_shape_center_y] + [offset_x_grid, offset_y_grid]
 
-
-                # 6. Matplotlib에 도형 추가
                 face_color = color1 if (r + c) % 2 == 0 else color2
                 polygon = Polygon(final_vertices, closed=True, edgecolor='black', facecolor=face_color, lw=1)
                 ax.add_patch(polygon)
 
-        # Matplotlib 축 범위 자동 조정 및 여백 추가
         ax.autoscale_view()
         ax.set_xlim(ax.get_xlim()[0] - x_step_grid/2, ax.get_xlim()[1] + x_step_grid/2)
         ax.set_ylim(ax.get_ylim()[0] - y_step_grid/2, ax.get_ylim()[1] + y_step_grid/2)
@@ -270,7 +240,6 @@ if final_base_vertices is not None and len(final_base_vertices) > 0:
     fig = create_tessellation_pattern(final_base_vertices, tile_size, rows, cols, color1, color2, transform_type, rotation_angle)
     if fig:
         st.pyplot(fig)
-        # 이미지 다운로드 버튼
         buf = BytesIO()
         fig.savefig(buf, format="png", bbox_inches='tight', pad_inches=0.1)
         st.download_button(

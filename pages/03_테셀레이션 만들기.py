@@ -3,8 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon, Rectangle
 import math
-from io import BytesIO # 이미지 다운로드를 위해 추가
+from io import BytesIO
 
+# --- 설정 및 제목 ---
 st.set_page_config(layout="wide")
 st.title("✂️ 나만의 테셀레이션 만들기")
 st.write("기본 도형을 변형하고 복사하여 독특한 패턴을 만들어 보세요!")
@@ -124,23 +125,9 @@ def create_tessellation_with_custom_shape(vertices, tile_size, rows, cols, color
                 if r % 2 != 0:
                     offset_x += x_offset_hex / 2
                 
-                # 육각형은 평면을 채울 때 회전 없이도 채울 수 있지만,
-                # 필요하다면 짝수/홀수 셀에 따라 추가 회전을 적용할 수도 있습니다.
-
             elif shape_type == "정삼각형":
-                # 정삼각형 테셀레이션은 가장 복잡함 (회전, 반전, 이동 조합)
                 st.warning("정삼각형 테셀레이션은 고급 구현이 필요합니다. 현재는 단순 배치됩니다.")
-                # 이 부분에 정삼각형의 정확한 오프셋 및 회전/반전 로직 추가
-                # 예:
-                # x_offset_tri = tile_size / 2
-                # y_offset_tri = tile_size * math.sqrt(3) / 2
-                # offset_x = c * x_offset_tri
-                # offset_y = r * y_offset_tri
-                # if (r % 2 == 0 and c % 2 != 0) or (r % 2 != 0 and c % 2 == 0):
-                #     # 특정 삼각형은 뒤집기 (Y축 반전)
-                #     # 변형된 도형을 뒤집는 로직은 꼭짓점 조작과 결합 시 복잡해짐
-                pass # 현재는 아무것도 하지 않음 (경고 메시지 출력)
-
+                pass
 
             # 각 타일의 변형된 꼭짓점 복사 및 이동
             current_vertices = np.copy(modified_vertices) + [offset_x, offset_y]
@@ -160,7 +147,6 @@ def create_tessellation_with_custom_shape(vertices, tile_size, rows, cols, color
                 ])
                 rotated_vertices = np.dot(temp_vertices, rotation_matrix.T) + [center_x, center_y]
                 current_vertices = rotated_vertices
-
 
             face_color = color1 if (r + c) % 2 == 0 else color2
             polygon = Polygon(current_vertices, closed=True, edgecolor='black', facecolor=face_color, lw=1)
@@ -183,4 +169,15 @@ if fig:
     st.pyplot(fig)
     # 이미지 다운로드 버튼 (Matplotlib 그림을 PNG로 저장)
     buf = BytesIO()
-    fig.
+    fig.savefig(buf, format="png", bbox_inches='tight', pad_inches=0.1)
+    st.download_button(
+        label="테셀레이션 이미지 다운로드 (PNG)",
+        data=buf.getvalue(),
+        file_name="custom_tessellation.png",
+        mime="image/png"
+    )
+else:
+    st.info("선택된 도형의 테셀레이션을 그릴 수 없습니다. 다른 도형을 선택하거나 설정을 확인해 보세요.")
+
+st.markdown("---")
+st.info("이 도구는 Python의 Streamlit과 Matplotlib을 사용하여 만들어졌습니다.")

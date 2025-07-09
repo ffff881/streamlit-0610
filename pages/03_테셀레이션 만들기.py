@@ -21,6 +21,7 @@ canvas_height = 500
 # --- 기본 도형의 꼭짓점 정의 함수 (캔버스 중앙에 오도록 조정) ---
 def get_initial_drawable_polygon_vertices(shape_type, size, canvas_width, canvas_height):
     vertices = []
+    # 도형의 중심을 (0,0)으로 일단 설정
     if shape_type == "정사각형":
         vertices = [
             [-size / 2, -size / 2],
@@ -52,26 +53,21 @@ def get_initial_drawable_polygon_vertices(shape_type, size, canvas_width, canvas
 # --- 사이드바 설정 ---
 st.sidebar.header("1. 기본 도형 선택")
 shape_type = st.sidebar.selectbox("기본 정다각형 선택:", ["정사각형", "정삼각형", "정육각형"])
-tile_size = st.sidebar.slider("캔버스 타일 기준 크기:", min_value=50, max_value=200, value=100, step=10)
+# 초기 타일 크기를 조금 더 크게 설정하여 확실히 보이도록 유도
+tile_size = st.sidebar.slider("캔버스 타일 기준 크기:", min_value=50, max_value=250, value=150, step=10) # Max 값을 250으로 올림
 
-# --- 캔버스에 초기 도형 그리기 위한 세션 상태 관리 (재시도) ---
-
-# 선택된 도형 타입과 크기에 따라 동적으로 캔버스 초기화 데이터 생성
-# st.session_state를 사용하지 않고, 매번 앱 실행 시 계산하여 전달
-# 이렇게 하면 Streamlit의 재실행 특성을 더 잘 활용할 수 있습니다.
-initial_vertices = get_initial_drawable_polygon_vertices(shape_type, tile_size, canvas_width, canvas_height)
-
-# `streamlit-drawable-canvas`는 `initial_drawing`에 {"objects": [...]} 형태를 기대함.
-# 이 데이터를 캐시하여 매번 재생성하지 않도록 최적화
+# --- 캔버스에 초기 도형 그리기 위한 데이터 생성 및 캐싱 ---
 @st.cache_data(show_spinner=False)
 def get_cached_initial_drawing_data(current_shape_type, current_tile_size, c_width, c_height):
     verts = get_initial_drawable_polygon_vertices(current_shape_type, current_tile_size, c_width, c_height)
+    
+    # 도형 색상을 눈에 잘 띄는 밝은 노란색과 짙은 파란색 테두리로 변경
     return {
         "objects": [{
             "type": "polygon",
-            "strokeWidth": 2,
-            "stroke": "black",
-            "fill": "rgba(255, 99, 71, 0.5)",
+            "strokeWidth": 5, # 테두리 두께를 5로 늘림
+            "stroke": "blue", # 테두리 색상을 파란색으로
+            "fill": "yellow", # 채우기 색상을 노란색으로 (불투명)
             "points": verts
         }]
     }
@@ -79,23 +75,21 @@ def get_cached_initial_drawing_data(current_shape_type, current_tile_size, c_wid
 initial_canvas_drawing_data = get_cached_initial_drawing_data(shape_type, tile_size, canvas_width, canvas_height)
 
 st.subheader("2. 캔버스에서 도형 변형하기 (클릭 & 드래그)")
-st.info("캔버스에 도형이 나타납니다. 도형을 클릭한 뒤 점을 드래그하여 변형하거나, 도형 전체를 이동/회전할 수 있습니다.")
+st.info("캔버스에 도형이 나타납니다. 도형을 클릭한 뒤 점을 드래그하여 변형하거나, 도형 전체를 이동/회전할 수 있습니다. 노란색으로 채워져 있습니다.")
 
 # 캔버스 컴포넌트
-# key를 `initial_canvas_drawing_data`의 내용을 기반으로 동적으로 생성하여,
-# 도형이 변경될 때마다 캔버스가 강제로 완전히 리로드되도록 합니다.
-# 이렇게 하면 캐시 문제나 초기화 지연 문제를 우회할 수 있습니다.
+# key를 동적으로 생성하여, 도형이 변경될 때마다 캔버스가 강제로 완전히 리로드되도록 합니다.
 canvas_key = f"canvas_tessellation_{shape_type}_{tile_size}_{hash(str(initial_canvas_drawing_data))}"
 
 canvas_result = st_canvas(
-    fill_color="rgba(255, 165, 0, 0.3)",
+    fill_color="rgba(255, 165, 0, 0.3)", # 이 fill_color는 사용자가 '그릴 때' 적용되는 색상
     stroke_width=2,
     stroke_color="black",
     background_color="#eee",
     height=canvas_height,
     width=canvas_width,
-    drawing_mode="transform",
-    initial_drawing=initial_canvas_drawing_data, # 수정된 초기 도형 데이터 전달
+    drawing_mode="transform", # 'transform' 모드가 객체 변형, 이동, 회전에 적합
+    initial_drawing=initial_canvas_drawing_data, # 캐시된 초기 도형 데이터 전달
     key=canvas_key # 동적으로 생성된 key 사용
 )
 

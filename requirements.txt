@@ -5,3 +5,6 @@ koreanize_matplotlib
 streamlit-folium
 streamlit
 scipy
+numpy
+matplotlib
+streamlit-drawable-canvas

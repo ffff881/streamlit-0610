@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon, Rectangle
 import math
-# from streamlit_drawable_canvas import st_canvas # 만약 이 컴포넌트를 사용한다면
+from io import BytesIO # 이미지 다운로드를 위해 추가
 
 st.set_page_config(layout="wide")
 st.title("✂️ 나만의 테셀레이션 만들기")
@@ -38,19 +38,12 @@ def get_base_polygon_vertices(shape_type, size):
             [size / 2, height]
         ])
     elif shape_type == "정육각형":
-        # (0,0)을 기준으로 한 정육각형 (중심이 아닌, 시작 꼭짓점이 (0,0)에 가깝게)
+        # 중심이 원점인 정육각형 (나중에 평행이동)
         angle_rad = np.radians(np.arange(0, 360, 60))
-        # 중심을 기준으로 하고 나중에 이동
-        center_x, center_y = size, size * math.sqrt(3) / 2
         vertices = np.array([
-            [center_x + size * np.cos(a), center_y + size * np.sin(a)]
+            [size * np.cos(a), size * np.sin(a)]
             for a in angle_rad
         ])
-        # 왼쪽 아래 꼭짓점을 (0,0)에 가깝게 이동
-        min_x = np.min(vertices[:, 0])
-        min_y = np.min(vertices[:, 1])
-        vertices = vertices - [min_x, min_y]
-
     return vertices
 
 # --- 사용자 정의 변형 섹션 ---
@@ -69,4 +62,125 @@ st.sidebar.markdown("---")
 st.sidebar.write("**각 꼭짓점의 상대적 위치 변형**")
 for i in range(num_vertices):
     st.sidebar.markdown(f"**꼭짓점 {i+1}**")
-    # 원본 꼭
+    # 원본 꼭짓점 좌표를 기준으로 상대적인 이동 값 슬라이더
+    # (x,y) 좌표에 대한 변형 범위는 타일 크기에 따라 조절 필요
+    delta_x = st.sidebar.slider(f"꼭짓점 {i+1} X 변형:",
+                                min_value=-tile_size / 2, max_value=tile_size / 2,
+                                value=0.0, step=1.0, key=f"vx_{i}")
+    delta_y = st.sidebar.slider(f"꼭짓점 {i+1} Y 변형:",
+                                min_value=-tile_size / 2, max_value=tile_size / 2,
+                                value=0.0, step=1.0, key=f"vy_{i}")
+    modified_vertices.append(base_vertices[i] + [delta_x, delta_y])
+
+modified_vertices = np.array(modified_vertices)
+
+# --- 테셀레이션 패턴 생성 설정 ---
+st.sidebar.header("3. 패턴 생성 설정")
+rows = st.sidebar.slider("행 개수:", min_value=1, max_value=15, value=5)
+cols = st.sidebar.slider("열 개수:", min_value=1, max_value=15, value=5)
+
+st.sidebar.subheader("색상 설정")
+color1 = st.sidebar.color_picker("기본 색상 1:", "#FF6347") # Tomato
+color2 = st.sidebar.color_picker("보조 색상 2:", "#4682B4") # SteelBlue
+
+st.sidebar.subheader("패턴 변환")
+rotation_angle = st.sidebar.slider("각 타일 회전 (도):", min_value=0, max_value=360, value=0, step=15)
+# 추후 뒤집기, 밀기 등 추가 가능
+
+# --- 테셀레이션 생성 및 시각화 함수 ---
+def create_tessellation_with_custom_shape(vertices, tile_size, rows, cols, color1, color2, rotation_angle):
+    if vertices is None or len(vertices) == 0:
+        st.error("유효한 도형 꼭짓점이 없습니다.")
+        return None
+
+    # 테셀레이션 크기 계산 (최대/최소 x,y 값으로 경계 상자 계산)
+    min_x, min_y = np.min(vertices[:, 0]), np.min(vertices[:, 1])
+    max_x, max_y = np.max(vertices[:, 0]), np.max(vertices[:, 1])
+    shape_width = max_x - min_x
+    shape_height = max_y - min_y
+
+    # 그리드 간격 계산 (기본)
+    x_step = shape_width
+    y_step = shape_height
+
+    fig, ax = plt.subplots(figsize=(cols * x_step / 70, rows * y_step / 70))
+    ax.set_aspect('equal', adjustable='box')
+    ax.axis('off')
+
+    for r in range(rows):
+        for c in range(cols):
+            offset_x = c * x_step
+            offset_y = r * y_step
+
+            # --- 선택된 도형 타입에 따른 오프셋 및 특수 처리 ---
+            if shape_type == "정육각형":
+                x_offset_hex = tile_size * 1.5
+                y_offset_hex = tile_size * math.sqrt(3) / 2
+
+                offset_x = c * x_offset_hex
+                offset_y = r * y_offset_hex
+
+                # 짝수/홀수 행에 따른 X축 오프셋
+                if r % 2 != 0:
+                    offset_x += x_offset_hex / 2
+                
+                # 육각형은 평면을 채울 때 회전 없이도 채울 수 있지만,
+                # 필요하다면 짝수/홀수 셀에 따라 추가 회전을 적용할 수도 있습니다.
+
+            elif shape_type == "정삼각형":
+                # 정삼각형 테셀레이션은 가장 복잡함 (회전, 반전, 이동 조합)
+                st.warning("정삼각형 테셀레이션은 고급 구현이 필요합니다. 현재는 단순 배치됩니다.")
+                # 이 부분에 정삼각형의 정확한 오프셋 및 회전/반전 로직 추가
+                # 예:
+                # x_offset_tri = tile_size / 2
+                # y_offset_tri = tile_size * math.sqrt(3) / 2
+                # offset_x = c * x_offset_tri
+                # offset_y = r * y_offset_tri
+                # if (r % 2 == 0 and c % 2 != 0) or (r % 2 != 0 and c % 2 == 0):
+                #     # 특정 삼각형은 뒤집기 (Y축 반전)
+                #     # 변형된 도형을 뒤집는 로직은 꼭짓점 조작과 결합 시 복잡해짐
+                pass # 현재는 아무것도 하지 않음 (경고 메시지 출력)
+
+
+            # 각 타일의 변형된 꼭짓점 복사 및 이동
+            current_vertices = np.copy(modified_vertices) + [offset_x, offset_y]
+
+            # 선택된 회전 적용 (도형의 중심을 기준으로 회전)
+            if rotation_angle != 0:
+                # 도형의 중심 계산
+                center_x = np.mean(current_vertices[:, 0])
+                center_y = np.mean(current_vertices[:, 1])
+                
+                # 중심을 원점으로 이동 -> 회전 -> 다시 원래 위치로 이동
+                temp_vertices = current_vertices - [center_x, center_y]
+                theta = np.radians(rotation_angle)
+                rotation_matrix = np.array([
+                    [np.cos(theta), -np.sin(theta)],
+                    [np.sin(theta), np.cos(theta)]
+                ])
+                rotated_vertices = np.dot(temp_vertices, rotation_matrix.T) + [center_x, center_y]
+                current_vertices = rotated_vertices
+
+
+            face_color = color1 if (r + c) % 2 == 0 else color2
+            polygon = Polygon(current_vertices, closed=True, edgecolor='black', facecolor=face_color, lw=1)
+            ax.add_patch(polygon)
+
+    # 모든 패치가 추가된 후 x,y 축 범위 조정
+    ax.autoscale_view()
+    # 여백 추가 (테셀레이션이 너무 꽉 차지 않도록)
+    ax.set_xlim(ax.get_xlim()[0] - tile_size/2, ax.get_xlim()[1] + tile_size/2)
+    ax.set_ylim(ax.get_ylim()[0] - tile_size/2, ax.get_ylim()[1] + tile_size/2)
+
+    return fig
+
+# --- 메인 화면에 테셀레이션 표시 ---
+st.subheader("생성된 테셀레이션 미리보기")
+
+# 실제 테셀레이션 생성 및 표시
+fig = create_tessellation_with_custom_shape(modified_vertices, tile_size, rows, cols, color1, color2, rotation_angle)
+if fig:
+    st.pyplot(fig)
+    # 이미지 다운로드 버튼 (Matplotlib 그림을 PNG로 저장)
+    buf = BytesIO()
+    fig.

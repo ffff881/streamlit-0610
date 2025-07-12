@@ -8,4 +8,3 @@ scipy
 numpy
 matplotlib
 streamlit-drawable-canvas
-pip install streamlit numpy matplotlib streamlit-drawable-canvas
